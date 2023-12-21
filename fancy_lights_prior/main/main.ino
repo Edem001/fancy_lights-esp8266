@@ -1,11 +1,18 @@
 
 //------------------CONSTANTS--------------------
-#define NUM_LEDS 50
+#define NUM_LEDS 50 // convert to value for flexibility
 int brightness = 150;
 #define MAX_BRIGHT 255
 #define SMOOTH_BRIGHTNESS_ADJUST_FRAME_SKIP  2 // Skips loop iterations to make brightness changes more smooth
 #define BTN_PIN 0
 #define LED_PIN 5
+
+#define MODE_ENABLE_AUTO_CHANGE false // Auto mode change: true - enable; false - disable 
+#define MODE_MAX 16
+bool onFlag = true; // Are lights on/off
+bool stepFlag = false; //  Is button held down
+bool brightDir = true; // Is brightness going to darken or lighten (false for darken)
+bool glitter = false;  //  Is glitter effect enabled
 
 //******************VUmeter*************************
 int LOW_PASS = 7;         // нижний порог шумов режим VU, ручная настройка
@@ -18,13 +25,6 @@ int LOW_PASS = 7;         // нижний порог шумов режим VU, �
 #define EXP 1.6           // степень усиления сигнала (для более "резкой" работы) (по умолчанию 1.4)
 long loop_counter = 0;
 #define AUTO_LOW_PASS_DELAY 10 // Настройка интервала автободбора нижних частот = AUTO_LOW_PASS_DELAY (секунды)
-
-#define MODE_ENABLE_AUTO_CHANGE false // Включить автоматическую смену режимов; true - включить; false - отключить 
-#define MODE_MAX 16
-boolean onFlag = true, stepFlag = false, brightDir = true;
-boolean glitter = false;
-#define SWITCH_MODE 0
-int StepSize = 1;
 
 // RAINBOW
 #define RAINBOW_STEP 5.00
@@ -57,7 +57,6 @@ int speed_delay = 60;
 String value;
 
 //MINOR_1
-bool brightness_dir = true;
 bool wasStep = false;
 bool wasChanged = false;
 bool isHue = true;
@@ -81,33 +80,10 @@ int RcurrentLevel;
 int prefferedBright = brightness;
 int frameSkip = 0;
 
-const char* ssid     = "fancy_lights";
+const char* ssid = "fancy_lights";
 const char* password = "testing_server";
 
 // page
-
-const char title_page[] PROGMEM = R"rawliteral(
-<!DOCTYPE html>
-<html>
-<head>
-  <title>fancy_lights manual control</title>
-</head>
-
-<style type="text/css">
-  p {
-    font-size: 20pt;
-  }
-
-</style>
-<body>
-
-<p>
-  fancy_lights under construction.
-</p>
-
-</body>
-</html>
-)rawliteral";
 
 void setup() {
   //-------------------------------------------------------------------------------
@@ -126,9 +102,6 @@ void setup() {
   // Print ESP8266 Local IP Address
   Serial.println(WiFi.localIP());
 
-server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/html", title_page);
-  });
 server.on("/mode", HTTP_GET, [] (AsyncWebServerRequest *request){
     request->send_P(200, "text/plain", String(mode).c_str());
   });
@@ -184,9 +157,11 @@ server.on("/brightness", HTTP_POST, [](AsyncWebServerRequest *request){}, NULL,
   Serial.begin(115200);
   randomSeed(analogRead(SOUND_R));
 
+  EEPROM_init(false);
+
   FastLED.addLeds<WS2811, LED_PIN, GRB>(leds, NUM_LEDS).setCorrection( TypicalLEDStrip );
   FastLED.setBrightness(brightness);
-  //autoLowPass();
+  autoLowPass();
   loop_counter = millis();
 
   pinMode(LED_PIN, OUTPUT);
@@ -239,14 +214,13 @@ void loop() {
       }
       frameSkip = 0;
   }
-  /*
+
   if (touch.isStep()) {
     stepFlag = true;
-    brightness += (brightDir ? 10 : -10);
-    brightness = constrain(brightness, 0, 255);
-    FastLED.setBrightness(brightness);
+    
+    changeBrightness(brightDir);
   }
-  */
+
   //mode automatic changing
   if (millis() - mode_timer > mode_delay && MODE_ENABLE_AUTO_CHANGE) {
     if (++mode > 20) mode = 0;
@@ -313,10 +287,10 @@ void loop() {
       leds[NUM_LEDS - 1] = CRGB::Green;
       break;
   }
-  /*
-  if(glitter)
-    addglitter(10);
-*/
+
+  //if(glitter) TODO!!!
+    //addglitter(10);
+
   FastLED.show();
 }
 

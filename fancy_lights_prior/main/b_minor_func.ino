@@ -1,13 +1,7 @@
-void changeBrightness() {
-  if(brightness_dir){
-    brightness += 10;
-    if(brightness > 255)  brightness = 255;
-  }else{
-    brightness -= 10;
-    if(brightness < 20)   brightness = 20;
-  }
+void changeBrightness(bool isLighten) {
+  brightness += (brightDir ? 10 : -10);
 
-  brightness = constrain(brightness, 20, 255);
+  brightness = constrain(brightness, 0, 255);
   FastLED.setBrightness(brightness);
 }
 
